@@ -91,45 +91,68 @@ async function checkRateLimit(env, keyIdentifier, limit = 60) {
 // Helper: Proxy request to Google Apps Script with robust redirect & body handling
 async function handleAppsScriptProxy(request, targetUrlStr, customHeaders = {}) {
   const method = request.method.toUpperCase();
-  const forwardHeaders = new Headers();
+  const url = new URL(targetUrlStr);
 
-  for (const [key, value] of request.headers.entries()) {
-    if (!HOP_BY_HOP_HEADERS.has(key.toLowerCase())) {
-      forwardHeaders.set(key, value);
-    }
+  // Headers bersih untuk Google Apps Script agar tidak memicu auth challenge
+  const cleanHeaders = new Headers();
+  cleanHeaders.set('User-Agent', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) TEN-API-Gateway/1.0');
+  cleanHeaders.set('Accept', '*/*');
+
+  const contentType = request.headers.get('content-type');
+  if (contentType) {
+    cleanHeaders.set('Content-Type', contentType);
   }
-
-  const targetUrl = new URL(targetUrlStr);
-  forwardHeaders.set('Host', targetUrl.host);
 
   if (customHeaders && typeof customHeaders === 'object') {
     for (const [k, v] of Object.entries(customHeaders)) {
-      forwardHeaders.set(k, String(v));
+      cleanHeaders.set(k, String(v));
     }
   }
 
-  const fetchOptions = {
+  const initialOptions = {
     method,
-    headers: forwardHeaders,
-    redirect: 'follow'
+    headers: cleanHeaders,
+    redirect: 'manual'
   };
 
   if (!['GET', 'HEAD'].includes(method)) {
     // Clone body for Apps Script POST/PUT
-    fetchOptions.body = await request.clone().arrayBuffer();
+    initialOptions.body = await request.clone().arrayBuffer();
   }
 
-  const upstreamRes = await fetch(targetUrl.toString(), fetchOptions);
+  // 1. Eksekusi request pertama ke script.google.com
+  let res = await fetch(url.toString(), initialOptions);
 
-  const resHeaders = new Headers(upstreamRes.headers);
+  // 2. Google Apps Script selalu me-redirect (302) ke script.googleusercontent.com/macros/echo
+  let redirectCount = 0;
+  while ([301, 302, 303, 307, 308].includes(res.status) && redirectCount < 5) {
+    redirectCount++;
+    const redirectLocation = res.headers.get('Location');
+    if (!redirectLocation) break;
+
+    const nextUrl = new URL(redirectLocation, url);
+
+    // Respon dari Google echo URL selalu di-fetch menggunakan GET dengan header bersih
+    const redirectHeaders = new Headers();
+    redirectHeaders.set('User-Agent', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) TEN-API-Gateway/1.0');
+    redirectHeaders.set('Accept', '*/*');
+
+    res = await fetch(nextUrl.toString(), {
+      method: 'GET',
+      headers: redirectHeaders,
+      redirect: 'manual'
+    });
+  }
+
+  const resHeaders = new Headers(res.headers);
   resHeaders.set('Access-Control-Allow-Origin', '*');
   resHeaders.set('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
   resHeaders.set('Access-Control-Allow-Headers', 'Content-Type, Authorization, x-api-key');
-  resHeaders.set('X-Gateway-By', 'TEN API Gateway (Apps Script Proxy)');
+  resHeaders.set('X-Gateway-By', 'TEN API Gateway (Apps Script)');
 
-  return new Response(upstreamRes.body, {
-    status: upstreamRes.status,
-    statusText: upstreamRes.statusText,
+  return new Response(res.body, {
+    status: res.status,
+    statusText: res.statusText,
     headers: resHeaders
   });
 }
