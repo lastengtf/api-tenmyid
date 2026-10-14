@@ -1,23 +1,49 @@
 # TEN API Gateway (api.ten.my.id)
 
-Platform API Gateway modern, ringan, dan cepat berbasis **Cloudflare Workers** & **Cloudflare Workers KV**.
+Platform API Gateway modern, tangguh, dan cepat berbasis **Cloudflare Workers** & **Cloudflare Workers KV**.
 
-## Fitur Utama
+## Fitur Unggulan
 
-- **Reverse Proxy Gateway**: Meneruskan request dari `api.ten.my.id` ke berbagai microservice/backend secara dinamis.
-- **Path-based Routing**: Mengatur route dengan prefix path (misal `/v1/users`, `/wa-bot`, `/webhook`).
-- **Autentikasi API Key**: Mengamankan endpoint route dengan opsi mewajibkan API Key (`x-api-key` atau `Authorization: Bearer <key>`).
-- **Path Stripping & Custom Headers**: Opsi otomatis memotong prefix path dan menginjeksi custom header ke upstream.
-- **CORS Otomatis**: Mendukung CORS preflight `OPTIONS` dan response header secara out-of-the-box.
-- **Dashboard Admin Terintegrasi**: Dashboard sederhana, cepat, dan fungsional langsung dari root domain (`/`).
-- **Database Cloudflare KV**: Menggunakan KV namespace untuk menyimpan konfigurasi route, API key, dan sesi.
+- **Dynamic Reverse Proxy Gateway**: Meneruskan request dari `api.ten.my.id` ke berbagai microservice/backend secara dinamis.
+- **⚡ Google Apps Script (GAS) Router & Shortener**:
+  - Panggil URL Apps Script tanpa kerumitan redirect 302 dan masalah CORS.
+  - **Instant Shortener**: `https://api.ten.my.id/gas/<DEPLOYMENT_ID>` otomatis terhubung ke script Google Anda.
+  - Dukungan kustom route alias (misal: `https://api.ten.my.id/absen` -> GAS Deployment ID).
+- **Edge Caching**: Opsi menyimpan cache respon `GET` di Cloudflare Edge (TTL detik) untuk respon instan (< 15ms).
+- **Rate Limiting**: Pencegahan spam dan overload per Client IP atau per API Key (request/menit).
+- **Live Activity Logs**: Menampilkan riwayat 100 request terakhir lengkap dengan HTTP method, status code, latency (ms), dan IP klien.
+- **Uptime / Health Check Ping**: Menguji ketersediaan backend upstream secara langsung dari dashboard.
+- **Autentikasi & Scoping API Key**: Pembatasan hak akses route tertentu untuk API key tertentu (`x-api-key` atau Bearer token).
+- **Dashboard Admin Terintegrasi**: Dashboard responsif dan fungsional langsung diakses dari browser (`/`).
+- **CI/CD GitHub Actions**: Otomatisasi deploy ke Cloudflare Workers setiap push ke branch `main`.
+
+---
+
+## Panduan Penggunaan Google Apps Script (GAS)
+
+### Cara 1: Instant Shortener (Tanpa Konfigurasi)
+Cukup panggil URL berikut:
+```bash
+# GET Request
+curl "https://api.ten.my.id/gas/AKfycbx1234567890abcdefg?action=getData"
+
+# POST Request
+curl -X POST "https://api.ten.my.id/gas/AKfycbx1234567890abcdefg" \
+  -H "Content-Type: application/json" \
+  -d '{"nama": "Budi", "status": "Hadir"}'
+```
+
+### Cara 2: Custom Alias di Dashboard
+1. Buka dashboard `api.ten.my.id` -> Tab **Routes** -> Klik **+ Route Apps Script**.
+2. Masukkan Prefix Path (misal `/presensi`) dan Deployment ID Google Anda.
+3. Klien sekarang bisa memanggil `https://api.ten.my.id/presensi` secara langsung dan rapi!
 
 ---
 
 ## Konfigurasi Cloudflare
 
 ### 1. KV Namespace
-Konfigurasi KV telah disesuaikan di `wrangler.toml`:
+Binding KV telah dikonfigurasi di `wrangler.toml`:
 ```toml
 [[kv_namespaces]]
 binding = "API_KV"
@@ -25,29 +51,18 @@ id = "c20b11151e224d98acf1bea7469700fb"
 ```
 
 ### 2. Environment Variables (Autentikasi Dashboard)
-Untuk login ke platform dashboard, buat variabel di dashboard Cloudflare Workers:
-- Masuk ke Cloudflare Dashboard -> **Workers & Pages** -> Pilih worker `api-tenmyid`.
-- Masuk ke tab **Settings** -> **Variables and Secrets**.
-- Tambahkan:
-  - `ADMIN_EMAIL`: Email login admin (misal: `admin@ten.my.id`)
-  - `ADMIN_PASSWORD`: Password login admin (simpan sebagai **Secret**)
+Atur variabel di Cloudflare Dashboard -> **Workers & Pages** -> `api-tenmyid` -> **Settings** -> **Variables and Secrets**:
+- `ADMIN_EMAIL`: Email login admin platform.
+- `ADMIN_PASSWORD`: Password login admin platform (simpan sebagai **Secret**).
 
-Atau gunakan CLI:
-```bash
-npx wrangler secret put ADMIN_PASSWORD
-```
-
-### 3. Custom Domain
-Tambahkan domain kustom di Cloudflare Dashboard:
-- Buka worker `api-tenmyid` -> **Settings** -> **Domains & Routes**.
-- Klik **Add** -> **Custom Domain**.
-- Masukkan `api.ten.my.id`.
+### 3. GitHub Actions CI/CD Secrets
+Untuk auto-deploy via GitHub Actions, tambahkan Secrets di repository GitHub Anda (**Settings** -> **Secrets and variables** -> **Actions**):
+- `CLOUDFLARE_API_TOKEN`: API Token Cloudflare dengan izin Edit Workers.
+- `CLOUDFLARE_ACCOUNT_ID`: Account ID Cloudflare Anda.
 
 ---
 
 ## Menjalankan Secara Lokal
-
-Untuk menguji di komputer lokal:
 
 ```bash
 # Install dependency
@@ -57,34 +72,7 @@ npm install
 npm run dev
 ```
 
----
-
-## Mendeploy ke Cloudflare
-
+## Mendeploy Manual
 ```bash
 npm run deploy
-```
-
----
-
-## Format Penggunaan API Gateway
-
-### 1. Request Publik
-Klien dapat langsung memanggil endpoint yang sudah didaftarkan:
-```bash
-curl -X GET "https://api.ten.my.id/v1/users"
-```
-
-### 2. Request dengan API Key
-Jika route diset mewajibkan API Key:
-```bash
-curl -X POST "https://api.ten.my.id/v1/orders" \
-  -H "x-api-key: ten_xxxxxxxxxxxxxxxxxxxxxx" \
-  -H "Content-Type: application/json" \
-  -d '{"item": "Laptop"}'
-```
-Atau menggunakan header Bearer:
-```bash
-curl -X GET "https://api.ten.my.id/v1/orders" \
-  -H "Authorization: Bearer ten_xxxxxxxxxxxxxxxxxxxxxx"
 ```
