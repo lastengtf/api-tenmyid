@@ -1,0 +1,23 @@
+{
+  "name": "api-tenmyid",
+  "version": "1.0.0",
+  "description": "API Gateway Platform for api.ten.my.id deployed on Cloudflare Workers and KV",
+  "main": "src/index.js",
+  "type": "module",
+  "scripts": {
+    "dev": "wrangler dev",
+    "deploy": "wrangler deploy",
+    "tail": "wrangler tail"
+  },
+  "keywords": [
+    "api-gateway",
+    "cloudflare-workers",
+    "cloudflare-kv",
+    "tenmyid"
+  ],
+  "author": "TEN",
+  "license": "MIT",
+  "devDependencies": {
+    "wrangler": "^3.114.0"
+  }
+}

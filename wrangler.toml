@@ -1,0 +1,19 @@
+name = "api-tenmyid"
+main = "src/index.js"
+compatibility_date = "2024-04-01"
+
+# KV Namespace Binding
+[[kv_namespaces]]
+binding = "API_KV"
+id = "c20b11151e224d98acf1bea7469700fb"
+
+# Variables - In production, override ADMIN_EMAIL and ADMIN_PASSWORD in Cloudflare Dashboard
+# or via `wrangler secret put ADMIN_PASSWORD`
+[vars]
+ADMIN_EMAIL = "admin@ten.my.id"
+# ADMIN_PASSWORD = "your-secure-password"
+
+# Optional Custom Domain routing (can also be configured via Cloudflare Dashboard -> Workers -> Custom Domains)
+# routes = [
+#   { pattern = "api.ten.my.id/*", zone_name = "ten.my.id" }
+# ]
